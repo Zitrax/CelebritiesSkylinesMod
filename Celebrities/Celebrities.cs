@@ -61,9 +61,10 @@ namespace Celebrities
 
                         return;
                     }
-
+                    SkylinesOverwatch.Settings.Instance.Enable.BuildingMonitor = true;
                     SkylinesOverwatch.Settings.Instance.Enable.HumanMonitor = true;
                     SkylinesOverwatch.Settings.Instance.Enable.Residents = true;
+                    // TODO: Is this needed ?
                     SkylinesOverwatch.Settings.Instance.Debug.HumanMonitor = true;
 
                     _initialized = true;
@@ -91,8 +92,29 @@ namespace Celebrities
             base.OnUpdate(realTimeDelta, simulationTimeDelta);
         }
 
+        ushort? m_tb = null;
+
+        private void ProcessBuildingsUpdated()
+        {
+            if (m_tb != null) return;
+            ushort[] entries = SkylinesOverwatch.Data.Instance.BuildingsUpdated;
+            if (entries.Length == 0) return;
+            BuildingManager instance = Singleton<BuildingManager>.instance;
+            foreach (ushort i in entries)
+            {
+                Building building = instance.m_buildings.m_buffer[(short)i];
+                m_tb = i;
+                ChirpLog.Info("Target building is: " + m_tb);
+                ChirpLog.Flush();
+                return;
+            }
+        }
+
         private void ProcessHumansUpdated()
         {
+            //Nothing to do if we have no target
+            //if (m_tb == null) return;
+
             uint[] entries = SkylinesOverwatch.Data.Instance.HumansUpdated;
 
             if (entries.Length == 0) return;
@@ -117,8 +139,17 @@ namespace Celebrities
                 if (!(info.m_citizenAI is ResidentAI))
                     continue;
 
+                if (info.m_gender == Citizen.Gender.Female)
+                {
+                    info.m_gender = Citizen.Gender.Male;
+                    ChirpLog.Info("Updated resident: " + resident.ToString() + " " + i);
+                    ChirpLog.Flush();
+                }
+
                 // Do something with resident
-                ChirpLog.Info("Updated resident: " + resident.ToString());
+                CitizenAI ai = (CitizenAI) info.GetAI();
+                // TODO: How to get the CitizenInstance ?
+                //ai.SetTarget(resident.m_instance, 0, m_tb);
             }
         }
     }
